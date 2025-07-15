@@ -1,0 +1,39 @@
+{
+    "version": "2.0.0",
+    "tasks": [
+        {
+            "label": "Compile OpenGL",
+            "type": "shell",
+            "command": "g++",
+            "args": [
+                "-g",
+                "-std=c++17",
+                "${file}",
+                "${workspaceFolder}/src/glad.c",
+                "-I${workspaceFolder}/include",
+                "-L${workspaceFolder}/lib",
+                "-lglfw3dll",
+                "-lopengl32",
+                "-lgdi32",
+                "-o",
+                "${workspaceFolder}/${input:exeName}.exe"
+            ],
+            "group": {
+                "kind": "build",
+                "isDefault": true
+            },
+            "problemMatcher": [],
+            "options": {
+                "cwd": "${workspaceFolder}"
+            }
+        }
+    ],
+    "inputs": [
+        {
+            "id": "exeName",
+            "type": "promptString",
+            "description": "Enter the name for the executable file (without extension)",
+            "default": "output"
+        }
+    ]
+}
