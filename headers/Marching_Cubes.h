@@ -4,6 +4,9 @@
 #include <iostream>
 #include <fstream>
 #include <sstream>
+#include <unordered_map>
+#include <cmath>
+#include <array>
 #include <glm/glm.hpp>
 
 struct Point3DMC {
@@ -33,10 +36,26 @@ struct Point3DMC {
         }
         return Point3DMC(0, 0, 0);
     }
+
+    bool operator==(const Point3DMC& other) const {
+        const float epsilon = 1e-6f;
+        return std::abs(x - other.x) < epsilon &&
+               std::abs(y - other.y) < epsilon &&
+               std::abs(z - other.z) < epsilon;
+    }
+};
+
+struct Point3DMCHash {
+    size_t operator() (const Point3DMC& point) const {
+        int x = static_cast<int>(point.x * 1000000);
+        int y = static_cast<int>(point.y * 1000000);
+        int z = static_cast<int>(point.z * 1000000);
+        return std::hash<int>()(x) ^ (std::hash<int>()(y) << 1) ^ (std::hash<int>()(z) << 2);
+    }
 };
 
 struct Triangle {
-    Point3DMC vertexes[3];
+    std::array<int, 3> vertexes_index;
     Point3DMC normalize;
 };
 
@@ -50,11 +69,18 @@ class MarchingCubes {
         std::vector<Point3DMC> point_cloud;
         std::vector<Triangle> triangles;
 
+        std::vector<Point3DMC> unique_vertices;
+        std::vector<Point3DMC> vertex_normals;
+        std::unordered_map<Point3DMC, int, Point3DMCHash> vertex_map;
+
         int grid_size_x, grid_size_y, grid_size_z;
         float cell_size;
         Point3DMC min_bounds, max_bounds;
-
         std::vector<std::vector<std::vector<float>>> scalar_field;
+
+        int add_or_find_vertex(const Point3DMC& vertex);
+        void calculate_vertex_normals();
+        float vertex_tolerance = 1e-6f;
     
     public:
         MarchingCubes(float cell_size = 1.0f);
@@ -70,7 +96,11 @@ class MarchingCubes {
         void generate_mesh(float iso_level = 0.5f);
         void process_point_cloud(const std::string& filename, float iso_level = 0.5f);
         const std::vector<Triangle>& get_triangles() const;
+        const std::vector<Point3DMC>& get_unique_vertices() const;
+        const std::vector<Point3DMC>& get_vertex_normals() const;
         void export_file_obj(const std::string& fileobj);
+        void clear_mesh();
+        void print_mesh_stats() const;
 };
 
 class SpatialHash {

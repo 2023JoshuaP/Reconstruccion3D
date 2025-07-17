@@ -422,6 +422,37 @@ void MarchingCubes::calculate_scalar_field() {
     std::cout << "Scalar field calculation complete." << std::endl;
 }
 
+int MarchingCubes::add_or_find_vertex(const Point3DMC& vertex) {
+    auto iterator = vertex_map.find(vertex);
+    if (iterator != vertex_map.end()) {
+        return iterator->second;
+    }
+
+    int index = unique_vertices.size();
+    unique_vertices.push_back(vertex);
+    vertex_normals.push_back(Point3DMC(0, 0, 0));
+    vertex_map[vertex] = index;
+
+    return index;
+}
+
+void MarchingCubes::calculate_vertex_normals() {
+    for (auto& normal : vertex_normals) {
+        normal = Point3DMC(0, 0, 0);
+    }
+
+    for (const auto& triangle : triangles) {
+        for (int i = 0; i < 3; i++) {
+            int vertex_idx = triangle.vertexes_index[i];
+            vertex_normals[vertex_idx] = vertex_normals[vertex_idx] + triangle.normalize;
+        }
+    }
+
+    for (auto& normal : vertex_normals) {
+        normal = normal.normalize();
+    }
+}
+
 Point3DMC MarchingCubes::vertex_interpolation(const Point3DMC& point_1, const Point3DMC& point_2, float value_1, float value_2, float iso_level) {
     if (std::abs(iso_level - value_1) < 1e-6f) {
         return point_1;
@@ -491,34 +522,39 @@ void MarchingCubes::process_cube(int x, int y, int z, float iso_level) {
 
     for (int i = 0; tri_table[cube_index][i] != -1; i += 3) {
         Triangle triangle;
-        triangle.vertexes[0] = vertex_list[tri_table[cube_index][i]];
-        triangle.vertexes[1] = vertex_list[tri_table[cube_index][i + 1]];
-        triangle.vertexes[2] = vertex_list[tri_table[cube_index][i + 2]];
 
-        Point3DMC v1 = triangle.vertexes[1] - triangle.vertexes[0];
-        Point3DMC v2 = triangle.vertexes[2] - triangle.vertexes[0];
+        Point3DMC v0 = vertex_list[tri_table[cube_index][i]];
+        Point3DMC v1 = vertex_list[tri_table[cube_index][i + 1]];
+        Point3DMC v2 = vertex_list[tri_table[cube_index][i + 2]];
+
+        triangle.vertexes_index[0] = add_or_find_vertex(v0);
+        triangle.vertexes_index[1] = add_or_find_vertex(v1);
+        triangle.vertexes_index[2] = add_or_find_vertex(v2);
+
+        Point3DMC vec1 = v1 - v0;
+        Point3DMC vec2 = v2 - v0;
 
         triangle.normalize = Point3DMC(
-            v1.y * v2.z - v1.z * v2.y,
-            v1.z * v2.x - v1.x * v2.z,
-            v1.x * v2.y - v1.y * v2.x
+            vec1.y * vec2.z - vec1.z * vec2.y,
+            vec1.z * vec2.x - vec1.x * vec2.z,
+            vec1.x * vec2.y - vec1.y * vec2.x
         );
 
         triangle.normalize = triangle.normalize.normalize();
-
         triangles.push_back(triangle);
     }
 }
 
 void MarchingCubes::generate_mesh(float iso_level) {
-    triangles.clear();
+    clear_mesh();
+
     int total_voxels = (grid_size_x - 1) * (grid_size_y - 1) * (grid_size_z - 1);
     int processed_voxels = 0;
     int last_progress = 0;
 
     for (int z = 0; z < grid_size_z - 1; z++) {
         int layer_progress = (z * 100) / (grid_size_z - 1);
-        if (layer_progress > last_progress && layer_progress % 20 == 0) {
+        if (layer_progress != last_progress) {
             std::cout << "Progress: " << layer_progress << "%" << std::endl;
             last_progress = layer_progress;
         }
@@ -530,7 +566,9 @@ void MarchingCubes::generate_mesh(float iso_level) {
         }
     }
 
-    std::cout << "Mesh generation complete." << std::endl;
+    calculate_vertex_normals();
+    std::cout << "Mesh generation complete."<< std::endl;
+    print_mesh_stats();
 }
 
 void MarchingCubes::process_point_cloud(const std::string& file_cloud, float cell_size) {
@@ -543,8 +581,30 @@ void MarchingCubes::process_point_cloud(const std::string& file_cloud, float cel
     generate_mesh();
 }
 
+void MarchingCubes::clear_mesh() {
+    triangles.clear();
+    unique_vertices.clear();
+    vertex_normals.clear();
+    vertex_map.clear();
+}
+
 const std::vector<Triangle>& MarchingCubes::get_triangles() const {
     return triangles;
+}
+
+const std::vector<Point3DMC>& MarchingCubes::get_unique_vertices() const {
+    return unique_vertices;
+}
+
+const std::vector<Point3DMC>& MarchingCubes::get_vertex_normals() const {
+    return vertex_normals;
+}
+
+void MarchingCubes::print_mesh_stats() const {
+    std::cout << "Mesh Statistics:" << std::endl;
+    std::cout << "Triangles: " << triangles.size() << std::endl;
+    std::cout << "Unique Vertices: " << unique_vertices.size() << std::endl;
+    std::cout << "Vertex Normals: " << vertex_normals.size() << std::endl;
 }
 
 void MarchingCubes::export_file_obj(const std::string& fileobj) {
@@ -554,29 +614,26 @@ void MarchingCubes::export_file_obj(const std::string& fileobj) {
         return;
     }
 
+    for (const auto& vertex : unique_vertices) {
+        file << "v " << vertex.x << " " << vertex.y << " " << vertex.z << "\n";
+    }
+
+    for (const auto& normal : vertex_normals) {
+        file << "vn " << normal.x << " " << normal.y << " " << normal.z << "\n";
+    }
+
     for (const auto& triangle : triangles) {
+        file << "f";
         for (int i = 0; i < 3; i++) {
-            file << "v " 
-                 << triangle.vertexes[i].x << " "
-                 << triangle.vertexes[i].y << " "
-                 << triangle.vertexes[i].z << "\n";
+            int index = triangle.vertexes_index[i] + 1;
+            file << " " << index << "//" << index;
+            if (i < 2) {
+                file << " ";
+            }
         }
-    }
-
-    for (const auto& triangle : triangles) {
-        file << "vn " << triangle.normalize.x << " "
-             << triangle.normalize.y << " "
-             << triangle.normalize.z << "\n";
-    }
-
-    for (int i = 0; i < triangles.size(); i++) {
-        int base_index = i * 3 + 1;
-        file << "f "
-             << base_index << "//" << (i + 1) << " "
-             << (base_index + 1) << "//" << (i + 1) << " "
-             << (base_index + 2) << "//" << (i + 1) << "\n";
+        file << "\n";
     }
 
     file.close();
-    std::cout << "Exported mesh to " << fileobj << std::endl;
+    std::cout << "Mesh exported to " << fileobj << std::endl;
 }
