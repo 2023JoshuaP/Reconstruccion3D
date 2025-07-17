@@ -10,11 +10,16 @@ int main(int argc, char* argv[]) {
     if (argc < 3) {
         std::cerr << "Usage: " << argv[0] << " <tiff_file | xy<_file> <opcion>" << std::endl;
         std::cerr << "Options: 1 = Extract points only, 2 = Marching Cubes" << std::endl;
+        std::cerr << "cell_size: Optional parameter for Marching Cubes (default: 0.5)" << std::endl;
         return 1;
     }
 
     std::string filename = argv[1];
     int option = std::stoi(argv[2]);
+    float cell_size = 0.5f;
+    if (argc >= 4) {
+        cell_size = std::stof(argv[3]);
+    }
     
     std::string extension = fs::path(filename).extension().string();
     std::string base_name = fs::path(filename).stem().string();
@@ -44,18 +49,26 @@ int main(int argc, char* argv[]) {
         }
         
         case 2: {
+            std::cout << "=== Marching Cubes ===" << std::endl;
             if (extension != ".xyz") {
-                std::cerr << "Error: opción 2 requiere un archivo XYZ como entrada." << std::endl;
+                std::cerr << "Error: Option 2 requires an XYZ file as input." << std::endl;
                 return 1;
             }
             
-            MarchingCubes marching(0.5f);
-            marching.process_point_cloud(filename, 0.5f);
-
+            std::cout << "Processing point cloud: " << filename << std::endl;
+            std::cout << "Cell size: " << cell_size << std::endl;
+            
+            // Crear instancia de MarchingCubes con el tamaño de celda especificado
+            MarchingCubes marching(cell_size);
+            
+            // Procesar la nube de puntos
+            marching.process_point_cloud(filename, cell_size);
+            
+            // Exportar la malla
             std::string file_obj = "mallas/" + base_name + "_mesh.obj";
             marching.export_file_obj(file_obj);
 
-            std::cout << "Marching Cubes completado. Malla exportada a: " << file_obj << std::endl;
+            std::cout << "Marching Cubes completed. Mesh exported to: " << file_obj << std::endl;
             break;
         }
         
