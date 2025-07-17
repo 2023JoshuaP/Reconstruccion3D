@@ -1,31 +1,6 @@
 #include "../headers/Extraction_Points_Tiff.h"
 
-bool is_edge_pixel(uint8_t** binary_image, int x, int y, int width, int height) {
-    if (binary_image[y][x] == 0) {
-        return false;
-    }
-
-    for (int dy = -1; dy <= 1; dy++) {
-        for (int dx = -1; dx <= 1; dx++) {
-            if (dx == 0 && dy == 0) {
-                continue;
-            }
-
-            int nx = x + dx;
-            int ny = y + dy;
-
-            if (nx < 0 || nx >= width || ny < 0 || ny >= height) {
-                return true;
-            }
-            if (binary_image[ny][nx] == 0) {
-                return true;
-            }
-        }
-    }
-    return false;
-}
-
-std::vector<Point3D> extraction_points_edge(const std::string& filename) {
+std::vector<Point3D> extraction_all_white_points(const std::string& filename) {
     std::vector<Point3D> points;
 
     TIFF* tif = TIFFOpen(filename.c_str(), "r");
@@ -52,31 +27,18 @@ std::vector<Point3D> extraction_points_edge(const std::string& filename) {
             break;
         }
 
-        uint8_t** binary_image = new uint8_t*[height];
         for (uint32_t y = 0; y < height; ++y) {
-            binary_image[y] = new uint8_t[width];
             for (uint32_t x = 0; x < width; ++x) {
                 uint32_t pixel = raster[y * width + x];
                 uint8_t r = TIFFGetR(pixel);
                 uint8_t g = TIFFGetG(pixel);
                 uint8_t b = TIFFGetB(pixel);
 
-                binary_image[y][x] = (r > 0 || g > 0 || b > 0) ? 255 : 0;
-            }
-        }
-
-        for (uint32_t y = 0; y < height; ++y) {
-            for (uint32_t x = 0; x < width; ++x) {
-                if (is_edge_pixel(binary_image, x, y, width, height)) {
+                if (r > 0 || g > 0 || b > 0) {
                     points.push_back({ (int)x, (int)(height - y), index_page });
                 }
             }
         }
-
-        for (uint32_t y = 0; y < height; ++y) {
-            delete[] binary_image[y];
-        }
-        delete[] binary_image;
 
         _TIFFfree(raster);
         index_page++;
