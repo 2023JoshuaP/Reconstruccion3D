@@ -1,5 +1,5 @@
-// Centered OBJ Viewer con zoom y modos de visualización
-#include <GL/glew.h>
+// OBJ Viewer con zoom, wireframe/fill toggle y rotación del modelo centrada con mouse
+#include <glad/glad.h>
 #include <GLFW/glfw3.h>
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
@@ -8,101 +8,63 @@
 #include <fstream>
 #include <sstream>
 #include <vector>
-#include <string>
-#include <algorithm>
+#include <limits>
 
 struct Vertex {
     glm::vec3 position;
     glm::vec3 normal;
-    glm::vec2 texCoord;
 };
 
-bool loadOBJ(const std::string& path, std::vector<Vertex>& finalVertices, std::vector<unsigned int>& indices, glm::vec3& center) {
+std::vector<Vertex> vertices;
+std::vector<unsigned int> indices;
+
+bool loadOBJ(const std::string& path, std::vector<Vertex>& outVertices, std::vector<unsigned int>& outIndices) {
     std::ifstream file(path);
-    if (!file.is_open()) {
-        std::cerr << "Error: No se pudo abrir el archivo " << path << std::endl;
-        return false;
-    }
+    if (!file.is_open()) return false;
 
-    std::vector<glm::vec3> positions;
-    std::vector<glm::vec3> normals;
-    std::vector<glm::vec2> texCoords;
+    std::vector<glm::vec3> temp_positions;
+    std::vector<glm::vec3> temp_normals;
+    std::vector<unsigned int> vertexIndices, normalIndices;
+
     std::string line;
-
     while (std::getline(file, line)) {
-        std::istringstream iss(line);
-        std::string prefix;
-        iss >> prefix;
-
-        if (prefix == "v") {
-            glm::vec3 vertex;
-            iss >> vertex.x >> vertex.y >> vertex.z;
-            positions.push_back(vertex);
-        } else if (prefix == "vn") {
+        std::istringstream ss(line);
+        std::string type;
+        ss >> type;
+        if (type == "v") {
+            glm::vec3 pos;
+            ss >> pos.x >> pos.y >> pos.z;
+            temp_positions.push_back(pos);
+        } else if (type == "vn") {
             glm::vec3 normal;
-            iss >> normal.x >> normal.y >> normal.z;
-            normals.push_back(normal);
-        } else if (prefix == "vt") {
-            glm::vec2 texCoord;
-            iss >> texCoord.x >> texCoord.y;
-            texCoords.push_back(texCoord);
-        } else if (prefix == "f") {
-            std::istringstream faceStream(line);
-            std::string dummy, vtx;
-            faceStream >> dummy;
-
-            std::vector<unsigned int> faceIndices;
-            while (faceStream >> vtx) {
-                unsigned int v, t = 0, n = 0;
-                size_t firstSlash = vtx.find('/');
-                size_t secondSlash = vtx.find('/', firstSlash + 1);
-
-                v = std::stoi(vtx.substr(0, firstSlash)) - 1;
-                if (firstSlash != std::string::npos && secondSlash != std::string::npos) {
-                    if (secondSlash > firstSlash + 1)
-                        t = std::stoi(vtx.substr(firstSlash + 1, secondSlash - firstSlash - 1)) - 1;
-                    if (secondSlash + 1 < vtx.size())
-                        n = std::stoi(vtx.substr(secondSlash + 1)) - 1;
-                }
-
+            ss >> normal.x >> normal.y >> normal.z;
+            temp_normals.push_back(normal);
+        } else if (type == "f") {
+            std::string v1, v2, v3;
+            ss >> v1 >> v2 >> v3;
+            std::istringstream s1(v1), s2(v2), s3(v3);
+            unsigned int pIdx[3], nIdx[3];
+            char slash;
+            s1 >> pIdx[0] >> slash >> slash >> nIdx[0];
+            s2 >> pIdx[1] >> slash >> slash >> nIdx[1];
+            s3 >> pIdx[2] >> slash >> slash >> nIdx[2];
+            for (int i = 0; i < 3; ++i) {
                 Vertex vert;
-                vert.position = positions[v];
-                vert.texCoord = (t < texCoords.size()) ? texCoords[t] : glm::vec2(0.0f);
-                vert.normal = (n < normals.size()) ? normals[n] : glm::vec3(0.0f, 1.0f, 0.0f);
-
-                finalVertices.push_back(vert);
-                faceIndices.push_back(finalVertices.size() - 1);
-            }
-
-            for (size_t i = 1; i < faceIndices.size() - 1; ++i) {
-                indices.push_back(faceIndices[0]);
-                indices.push_back(faceIndices[i]);
-                indices.push_back(faceIndices[i + 1]);
+                vert.position = temp_positions[pIdx[i] - 1];
+                vert.normal = temp_normals.empty() ? glm::vec3(0.0f) : temp_normals[nIdx[i] - 1];
+                outVertices.push_back(vert);
+                outIndices.push_back(outIndices.size());
             }
         }
     }
 
-    file.close();
-
-    if (indices.empty()) {
-        for (const auto& pos : positions) {
+    if (outIndices.empty()) {
+        for (const auto& pos : temp_positions) {
             Vertex vert;
             vert.position = pos;
-            vert.normal = glm::vec3(0.0f, 1.0f, 0.0f);
-            vert.texCoord = glm::vec2(0.0f);
-            finalVertices.push_back(vert);
+            vert.normal = glm::vec3(0.0f);
+            outVertices.push_back(vert);
         }
-    }
-
-    // Centrado del modelo
-    glm::vec3 min(FLT_MAX), max(-FLT_MAX);
-    for (const auto& v : positions) {
-        min = glm::min(min, v);
-        max = glm::max(max, v);
-    }
-    center = (min + max) / 2.0f;
-    for (auto& v : finalVertices) {
-        v.position -= center;
     }
 
     return true;
@@ -112,135 +74,102 @@ const char* vertexShaderSource = R"(
 #version 330 core
 layout (location = 0) in vec3 aPos;
 layout (location = 1) in vec3 aNormal;
-layout (location = 2) in vec2 aTexCoord;
-
-out vec3 FragPos;
-out vec3 Normal;
-out vec2 TexCoord;
 
 uniform mat4 model;
 uniform mat4 view;
 uniform mat4 projection;
 
+out vec3 FragPos;
+out vec3 Normal;
+
 void main() {
     FragPos = vec3(model * vec4(aPos, 1.0));
     Normal = mat3(transpose(inverse(model))) * aNormal;
-    TexCoord = aTexCoord;
     gl_Position = projection * view * vec4(FragPos, 1.0);
-})";
+}
+)";
 
 const char* fragmentShaderSource = R"(
 #version 330 core
-out vec4 FragColor;
-
 in vec3 FragPos;
 in vec3 Normal;
-in vec2 TexCoord;
 
 uniform vec3 lightPos;
 uniform vec3 viewPos;
 uniform vec3 lightColor;
 uniform vec3 objectColor;
 
-void main() {
-    float ambientStrength = 0.1;
-    vec3 ambient = ambientStrength * lightColor;
+out vec4 FragColor;
 
+void main() {
+    float ambientStrength = 0.2;
+    vec3 ambient = ambientStrength * lightColor;
     vec3 norm = normalize(Normal);
     vec3 lightDir = normalize(lightPos - FragPos);
     float diff = max(dot(norm, lightDir), 0.0);
     vec3 diffuse = diff * lightColor;
-
-    float specularStrength = 0.5;
-    vec3 viewDir = normalize(viewPos - FragPos);
-    vec3 reflectDir = reflect(-lightDir, norm);
-    float spec = pow(max(dot(viewDir, reflectDir), 0.0), 32);
-    vec3 specular = specularStrength * spec * lightColor;
-
-    vec3 result = (ambient + diffuse + specular) * objectColor;
+    vec3 result = (ambient + diffuse) * objectColor;
     FragColor = vec4(result, 1.0);
-})";
+}
+)";
 
 float lastX = 400, lastY = 300;
-float yaw = -90.0f, pitch = 0.0f;
 bool firstMouse = true;
-float zoomLevel = 500.0f;
+float fov = 45.0f;
 bool wireframe = false;
+bool rotating = false;
+double lastMouseX, lastMouseY;
+float rotationX = 0.0f, rotationY = 0.0f;
+float aspectRatio = 800.0f / 600.0f;
+glm::vec3 modelCenter;
 
-glm::vec3 cameraPos = glm::vec3(0.0f, 0.0f, zoomLevel);
-glm::vec3 cameraFront = glm::vec3(0.0f, 0.0f, -1.0f);
-glm::vec3 cameraUp = glm::vec3(0.0f, 1.0f, 0.0f);
-
-void mouseCallback(GLFWwindow* window, double xpos, double ypos) {
-    if (firstMouse) {
-        lastX = xpos;
-        lastY = ypos;
-        firstMouse = false;
-    }
-
-    float xoffset = xpos - lastX;
-    float yoffset = lastY - ypos;
-    lastX = xpos;
-    lastY = ypos;
-
-    float sensitivity = 0.1f;
-    xoffset *= sensitivity;
-    yoffset *= sensitivity;
-
-    yaw += xoffset;
-    pitch += yoffset;
-    pitch = std::clamp(pitch, -89.0f, 89.0f);
-
-    glm::vec3 direction;
-    direction.x = cos(glm::radians(yaw)) * cos(glm::radians(pitch));
-    direction.y = sin(glm::radians(pitch));
-    direction.z = sin(glm::radians(yaw)) * cos(glm::radians(pitch));
-    cameraFront = glm::normalize(direction);
+void framebuffer_size_callback(GLFWwindow* window, int width, int height) {
+    glViewport(0, 0, width, height);
+    aspectRatio = static_cast<float>(width) / height;
 }
 
-void scrollCallback(GLFWwindow* window, double xoffset, double yoffset) {
-    zoomLevel -= yoffset * 10.0f;
-    zoomLevel = std::clamp(zoomLevel, 10.0f, 5000.0f);
-    cameraPos = glm::vec3(0.0f, 0.0f, zoomLevel);
+void scroll_callback(GLFWwindow* window, double xoffset, double yoffset) {
+    fov -= (float)yoffset;
+    if (fov < 1.0f) fov = 1.0f;
+    if (fov > 90.0f) fov = 90.0f;
+}
+
+void mouse_button_callback(GLFWwindow* window, int button, int action, int mods) {
+    if (button == GLFW_MOUSE_BUTTON_LEFT) {
+        if (action == GLFW_PRESS) {
+            rotating = true;
+            glfwGetCursorPos(window, &lastMouseX, &lastMouseY);
+        } else if (action == GLFW_RELEASE) {
+            rotating = false;
+        }
+    }
+}
+
+void cursor_position_callback(GLFWwindow* window, double xpos, double ypos) {
+    if (rotating) {
+        float dx = xpos - lastMouseX;
+        float dy = ypos - lastMouseY;
+        rotationX += dy * 0.5f;
+        rotationY += dx * 0.5f;
+        lastMouseX = xpos;
+        lastMouseY = ypos;
+    }
 }
 
 void processInput(GLFWwindow* window) {
     if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS)
         glfwSetWindowShouldClose(window, true);
-
     if (glfwGetKey(window, GLFW_KEY_M) == GLFW_PRESS)
         wireframe = true;
     if (glfwGetKey(window, GLFW_KEY_F) == GLFW_PRESS)
         wireframe = false;
 }
 
-GLuint compileShader(GLenum type, const char* source) {
-    GLuint shader = glCreateShader(type);
+unsigned int compileShader(GLenum type, const char* source) {
+    unsigned int shader = glCreateShader(type);
     glShaderSource(shader, 1, &source, NULL);
     glCompileShader(shader);
-
-    GLint success;
-    glGetShaderiv(shader, GL_COMPILE_STATUS, &success);
-    if (!success) {
-        char infoLog[512];
-        glGetShaderInfoLog(shader, 512, NULL, infoLog);
-        std::cerr << "Shader compile error: " << infoLog << std::endl;
-    }
     return shader;
-}
-
-GLuint createShaderProgram() {
-    GLuint vertexShader = compileShader(GL_VERTEX_SHADER, vertexShaderSource);
-    GLuint fragmentShader = compileShader(GL_FRAGMENT_SHADER, fragmentShaderSource);
-
-    GLuint program = glCreateProgram();
-    glAttachShader(program, vertexShader);
-    glAttachShader(program, fragmentShader);
-    glLinkProgram(program);
-
-    glDeleteShader(vertexShader);
-    glDeleteShader(fragmentShader);
-    return program;
 }
 
 int main() {
@@ -251,48 +180,72 @@ int main() {
 
     GLFWwindow* window = glfwCreateWindow(800, 600, "OBJ Viewer", NULL, NULL);
     glfwMakeContextCurrent(window);
-    glfwSetFramebufferSizeCallback(window, [](GLFWwindow*, int w, int h) { glViewport(0, 0, w, h); });
-    glfwSetCursorPosCallback(window, mouseCallback);
-    glfwSetScrollCallback(window, scrollCallback);
-    glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
+    gladLoadGLLoader((GLADloadproc)glfwGetProcAddress);
 
-    glewInit();
     glEnable(GL_DEPTH_TEST);
+    glfwSetFramebufferSizeCallback(window, framebuffer_size_callback);
+    glfwSetScrollCallback(window, scroll_callback);
+    glfwSetMouseButtonCallback(window, mouse_button_callback);
+    glfwSetCursorPosCallback(window, cursor_position_callback);
 
-    GLuint shaderProgram = createShaderProgram();
+    if (!loadOBJ("D:/Reconstruccion 3D/mallas/lungMasks_extraction_points_mesh.obj", vertices, indices)) {
+        std::cerr << "No se pudo cargar el OBJ" << std::endl;
+        return -1;
+    }
 
-    std::vector<Vertex> vertices;
-    std::vector<unsigned int> indices;
-    glm::vec3 modelCenter;
-    if (!loadOBJ("D:/Reconstruccion 3D/mallas/brainMasks_extraction_points_mesh.obj", vertices, indices, modelCenter)) return -1;
+    glm::vec3 minPos(FLT_MAX), maxPos(-FLT_MAX);
+    for (const auto& v : vertices) {
+        minPos = glm::min(minPos, v.position);
+        maxPos = glm::max(maxPos, v.position);
+    }
+    modelCenter = (minPos + maxPos) / 2.0f;
 
-    GLuint VAO, VBO, EBO;
+    unsigned int VBO, VAO, EBO;
     glGenVertexArrays(1, &VAO);
     glGenBuffers(1, &VBO);
     glGenBuffers(1, &EBO);
-
     glBindVertexArray(VAO);
+
     glBindBuffer(GL_ARRAY_BUFFER, VBO);
     glBufferData(GL_ARRAY_BUFFER, vertices.size() * sizeof(Vertex), vertices.data(), GL_STATIC_DRAW);
+
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO);
     glBufferData(GL_ELEMENT_ARRAY_BUFFER, indices.size() * sizeof(unsigned int), indices.data(), GL_STATIC_DRAW);
-    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void*)offsetof(Vertex, position));
+
+    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void*)0);
     glEnableVertexAttribArray(0);
     glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void*)offsetof(Vertex, normal));
     glEnableVertexAttribArray(1);
-    glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void*)offsetof(Vertex, texCoord));
-    glEnableVertexAttribArray(2);
+
+    unsigned int vertexShader = compileShader(GL_VERTEX_SHADER, vertexShaderSource);
+    unsigned int fragmentShader = compileShader(GL_FRAGMENT_SHADER, fragmentShaderSource);
+    unsigned int shaderProgram = glCreateProgram();
+    glAttachShader(shaderProgram, vertexShader);
+    glAttachShader(shaderProgram, fragmentShader);
+    glLinkProgram(shaderProgram);
+    glDeleteShader(vertexShader);
+    glDeleteShader(fragmentShader);
+
+    glm::vec3 cameraPos(0.0f, 0.0f, 200.0f);
+    glm::vec3 cameraFront(0.0f, 0.0f, -1.0f);
+    glm::vec3 cameraUp(0.0f, 1.0f, 0.0f);
 
     while (!glfwWindowShouldClose(window)) {
         processInput(window);
 
         glClearColor(0.1f, 0.1f, 0.2f, 1.0f);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-        glPolygonMode(GL_FRONT_AND_BACK, wireframe ? GL_LINE : GL_FILL);
+
+        if (wireframe) glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
+        else glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
 
         glm::mat4 model = glm::mat4(1.0f);
-        glm::mat4 view = glm::lookAt(cameraPos, glm::vec3(0.0f), cameraUp);
-        glm::mat4 projection = glm::perspective(glm::radians(45.0f), 800.f / 600.f, 0.1f, 10000.f);
+        model = glm::translate(model, -modelCenter);
+        model = glm::rotate(model, glm::radians(rotationX), glm::vec3(1, 0, 0));
+        model = glm::rotate(model, glm::radians(rotationY), glm::vec3(0, 1, 0));
+
+        glm::mat4 view = glm::lookAt(cameraPos, cameraPos + cameraFront, cameraUp);
+        glm::mat4 projection = glm::perspective(glm::radians(fov), aspectRatio, 0.1f, 10000.f);
 
         glUseProgram(shaderProgram);
         glUniformMatrix4fv(glGetUniformLocation(shaderProgram, "model"), 1, GL_FALSE, glm::value_ptr(model));
@@ -315,10 +268,6 @@ int main() {
         glfwPollEvents();
     }
 
-    glDeleteVertexArrays(1, &VAO);
-    glDeleteBuffers(1, &VBO);
-    glDeleteBuffers(1, &EBO);
-    glDeleteProgram(shaderProgram);
     glfwTerminate();
     return 0;
 }
