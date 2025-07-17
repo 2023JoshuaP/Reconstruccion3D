@@ -30,7 +30,7 @@ int main(int argc, char* argv[]) {
                 return 1;
             }
 
-            std::vector<Point3D> points = extraction_points_edge(filename);
+            std::vector<Point3D> points = extraction_all_white_points(filename);
             std::string file_xyz = "coordenadas/" + base_name + "_extraction_points.xyz";
 
             if (!save_points(file_xyz, points)) {
