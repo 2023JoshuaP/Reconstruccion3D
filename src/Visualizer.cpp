@@ -80,17 +80,17 @@ public:
     
     void setupOrganInfo() {
         organInfo = {
-            //{"blood", "bloodMasks_extraction_points_mesh.obj", 
-            //glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(1.0f), glm::vec3(0.8f, 0.1f, 0.1f), 
-            //'B', "Sistema circulatorio - Sangre"},
+            {"blood", "bloodMasks_extraction_points_mesh.obj", 
+            glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(4.8f), glm::vec3(0.8f, 0.1f, 0.1f), 
+            'B', "Sistema circulatorio - Sangre"},
 
             {"brain", "brainMasks_extraction_points_mesh.obj", 
             glm::vec3(0.9f, 0.10f, -0.2f), glm::vec3(0.85f), glm::vec3(0.9f, 0.7f, 0.9f), 
             'R', "Sistema nervioso - Cerebro"},
 
-            //{"duodenum", "duodenumMasks_extraction_points_mesh.obj", 
-            //glm::vec3(0.2f, -0.1f, 0.0f), glm::vec3(0.8f), glm::vec3(0.6f, 0.4f, 0.2f), 
-            //'D', "Sistema digestivo - Duodeno"},
+            {"duodenum", "duodenumMasks_extraction_points_mesh.obj", 
+            glm::vec3(-0.2f, -0.02f, 0.1f), glm::vec3(0.5f), glm::vec3(0.95f, 0.7f, 0.4f), 
+            'D', "Sistema digestivo - Duodeno"},
 
             {"eyes", "eyeMasks_extraction_points_mesh.obj", 
             glm::vec3(1.1f, 0.08f, -0.35f), glm::vec3(1.0f), glm::vec3(0.1f, 0.1f, 0.1f), 
@@ -108,17 +108,17 @@ public:
             glm::vec3(0.2f, 0.13f, -0.15f), glm::vec3(0.7f), glm::vec3(0.7f, 0.1f, 0.1f), 
             'H', "Sistema circulatorio - Corazón"},
 
-            //{"ileum", "ileumMasks_extraction_points_mesh.obj", 
-            //glm::vec3(0.0f, -0.3f, 0.0f), glm::vec3(0.9f), glm::vec3(0.8f, 0.6f, 0.3f), 
-            //'I', "Sistema digestivo - Íleon"},
+            {"ileum", "ileumMasks_extraction_points_mesh.obj", 
+            glm::vec3(-0.6f, -0.05f, 0.1f), glm::vec3(0.5f), glm::vec3(0.95f, 0.7f, 0.4f), 
+            'I', "Sistema digestivo - Íleon"},
 
-            //{"intestine", "intestineMasks_extraction_points_mesh.obj", 
-            //glm::vec3(0.0f, -0.4f, 0.0f), glm::vec3(1.0f), glm::vec3(0.7f, 0.5f, 0.2f), 
-            //'N', "Sistema digestivo - Intestino"},
+            {"intestine", "intestineMasks_extraction_points_mesh.obj", 
+            glm::vec3(-0.4f, 0.0f, 0.09f), glm::vec3(0.7f), glm::vec3(0.85f, 0.6f, 0.3f), 
+            'N', "Sistema digestivo - Intestino"},
 
-            //{"kidney", "kidneyMasks_extraction_points_mesh.obj", 
-            //glm::vec3(-0.3f, 0.0f, -0.2f), glm::vec3(0.6f), glm::vec3(0.6f, 0.3f, 0.2f), 
-            //'K', "Sistema excretor - Riñón"},
+            {"kidney", "kidneyMasks_extraction_points_mesh.obj", 
+            glm::vec3(-0.2f, 0.1f, -0.2f), glm::vec3(1.2f), glm::vec3(0.6f, 0.3f, 0.2f), 
+            'K', "Sistema excretor - Riñón"},
 
             {"liver", "liverMasks_extraction_points_mesh.obj", 
             glm::vec3(0.0f, 0.3f, -0.12f), glm::vec3(0.85f), glm::vec3(0.5f, 0.2f, 0.1f), 
@@ -128,21 +128,21 @@ public:
             glm::vec3(0.2f, 0.10f, -0.10f), glm::vec3(1.2f), glm::vec3(0.9f, 0.6f, 0.6f), 
             'U', "Sistema respiratorio - Pulmón"},
 
-            //{"muscle", "muscleMasks_extraction_points_mesh.obj", 
-            //glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(1.6f), glm::vec3(0.8f, 0.3f, 0.3f), 
-            //'M', "Sistema muscular - Músculos"},
+            {"muscle", "muscleMasks_extraction_points_mesh.obj", 
+            glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(5.6f), glm::vec3(0.8f, 0.3f, 0.3f), 
+            'M', "Sistema muscular - Músculos"},
 
-            //{"nerve", "nerveMasks_extraction_points_mesh.obj", 
-            //glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(1.0f), glm::vec3(0.9f, 0.9f, 0.3f), 
-            //'V', "Sistema nervioso - Nervios"},
+            {"nerve", "nerveMasks_extraction_points_mesh.obj", 
+            glm::vec3(0.0f, 0.15f, -0.05f), glm::vec3(5.0f), glm::vec3(1.0f, 0.9f, 0.3f), 
+            'V', "Sistema nervioso - Nervios"},
 
             {"skeleton", "skeletonMasks_extraction_points_mesh.obj", 
             glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(5.0f), glm::vec3(0.9f, 0.9f, 0.8f), 
             'S', "Sistema esquelético - Huesos"},
 
-            //{"spleen", "spleenMasks_extraction_points_mesh.obj", 
-            //glm::vec3(0.4f, 0.0f, 0.0f), glm::vec3(0.3f), glm::vec3(0.5f, 0.1f, 0.1f), 
-            //'P', "Sistema linfático - Bazo"},
+            {"spleen", "spleenMasks_extraction_points_mesh.obj", 
+            glm::vec3(0.0f, 0.18f, -0.15f), glm::vec3(0.5f), glm::vec3(0.7f, 0.2f, 0.2f), 
+            'P', "Sistema linfático - Bazo"},
 
             {"stomach", "stomachMasks_extraction_points_mesh.obj", 
             glm::vec3(0.0f, -0.05f, -0.15f), glm::vec3(0.9f), glm::vec3(1.0f, 0.7f, 0.4f), 
