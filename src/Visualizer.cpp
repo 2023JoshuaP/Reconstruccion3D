@@ -81,7 +81,7 @@ public:
     void setupOrganInfo() {
         organInfo = {
             {"blood", "bloodMasks_extraction_points_mesh.obj", 
-            glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(4.8f), glm::vec3(0.8f, 0.1f, 0.1f), 
+            glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(4.0f), glm::vec3(0.8f, 0.1f, 0.1f), 
             'B', "Sistema circulatorio - Sangre"},
 
             {"brain", "brainMasks_extraction_points_mesh.obj", 
@@ -129,11 +129,11 @@ public:
             'U', "Sistema respiratorio - Pulmón"},
 
             {"muscle", "muscleMasks_extraction_points_mesh.obj", 
-            glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(5.6f), glm::vec3(0.8f, 0.3f, 0.3f), 
+            glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(5.85f), glm::vec3(0.8f, 0.3f, 0.3f), 
             'M', "Sistema muscular - Músculos"},
 
             {"nerve", "nerveMasks_extraction_points_mesh.obj", 
-            glm::vec3(0.0f, 0.15f, -0.05f), glm::vec3(5.0f), glm::vec3(1.0f, 0.9f, 0.3f), 
+            glm::vec3(0.0f, 0.15f, -0.05f), glm::vec3(4.3f), glm::vec3(1.0f, 0.9f, 0.3f), 
             'V', "Sistema nervioso - Nervios"},
 
             {"skeleton", "skeletonMasks_extraction_points_mesh.obj", 
