@@ -55,9 +55,14 @@ class FrogAnatomyViewer {
         float cameraAngleY = 0.0f;
         float cameraDistance = 5.0f;
         
+        bool wireframeMode = false;
+        
+        float rotationSpeed = 0.03f;
+        
         bool keys[1024];
         bool keyPressed[1024];
         
+
     public:
         FrogAnatomyViewer() {
             setupOrganInfo();
@@ -488,6 +493,13 @@ class FrogAnatomyViewer {
             glClearColor(0.1f, 0.1f, 0.1f, 1.0f);
             glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
             
+            if (wireframeMode) {
+                glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
+                glLineWidth(1.0f);
+            } else {
+                glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+            }
+            
             glUseProgram(shaderProgram);
             
             glm::mat4 view = glm::lookAt(cameraPos, cameraTarget, cameraUp);
@@ -535,15 +547,43 @@ class FrogAnatomyViewer {
                 glfwSetWindowShouldClose(window, true);
             }
             
-            if (keys[GLFW_KEY_LEFT]) cameraAngleY -= 0.02f;
-            if (keys[GLFW_KEY_RIGHT]) cameraAngleY += 0.02f;
-            if (keys[GLFW_KEY_UP]) cameraAngleX += 0.02f;
-            if (keys[GLFW_KEY_DOWN]) cameraAngleX -= 0.02f;
+            if (keys[GLFW_KEY_LEFT]) {
+                cameraAngleY -= rotationSpeed;
+            }
+            if (keys[GLFW_KEY_RIGHT]) {
+                cameraAngleY += rotationSpeed;
+            }
+            if (keys[GLFW_KEY_UP]) {
+                cameraAngleX += rotationSpeed;
+            }
+            if (keys[GLFW_KEY_DOWN]) {
+                cameraAngleX -= rotationSpeed;
+            }
             
-            cameraAngleX = glm::clamp(cameraAngleX, -1.5f, 1.5f);
+            // Mejorado: Rango de rotación más amplio
+            cameraAngleX = glm::clamp(cameraAngleX, -1.57f, 1.57f); // Casi 90 grados
+            
+            // Normalizar ángulo Y para rotación completa
+            if (cameraAngleY > 2.0f * M_PI) {
+                cameraAngleY -= 2.0f * M_PI;
+            }
+            if (cameraAngleY < -2.0f * M_PI) {
+                cameraAngleY += 2.0f * M_PI;
+            }
             
             if (keys[GLFW_KEY_EQUAL]) cameraDistance = std::max(1.0f, cameraDistance - 0.1f);
             if (keys[GLFW_KEY_MINUS]) cameraDistance = std::min(15.0f, cameraDistance + 0.1f);
+            
+            if (keys[GLFW_KEY_PAGE_UP] && !keyPressed[GLFW_KEY_PAGE_UP]) {
+                rotationSpeed = std::min(0.1f, rotationSpeed + 0.01f);
+                std::cout << "Velocidad de rotación: " << rotationSpeed << std::endl;
+                keyPressed[GLFW_KEY_PAGE_UP] = true;
+            }
+            if (keys[GLFW_KEY_PAGE_DOWN] && !keyPressed[GLFW_KEY_PAGE_DOWN]) {
+                rotationSpeed = std::max(0.01f, rotationSpeed - 0.01f);
+                std::cout << "Velocidad de rotación: " << rotationSpeed << std::endl;
+                keyPressed[GLFW_KEY_PAGE_DOWN] = true;
+            }
             
             if (keys[GLFW_KEY_A] && !keyPressed[GLFW_KEY_A]) {
                 for (auto& pair : organs) {
@@ -559,83 +599,106 @@ class FrogAnatomyViewer {
                 keyPressed[GLFW_KEY_C] = true;
             }
             
+            if (keys[GLFW_KEY_F] && !keyPressed[GLFW_KEY_F]) {
+                wireframeMode = !wireframeMode;
+                std::cout << "Modo wireframe: " << (wireframeMode ? "ON" : "OFF") << std::endl;
+                keyPressed[GLFW_KEY_F] = true;
+            }
+            
             if (!keys[GLFW_KEY_A]) keyPressed[GLFW_KEY_A] = false;
             if (!keys[GLFW_KEY_C]) keyPressed[GLFW_KEY_C] = false;
+            if (!keys[GLFW_KEY_F]) keyPressed[GLFW_KEY_F] = false;
+            if (!keys[GLFW_KEY_PAGE_UP]) keyPressed[GLFW_KEY_PAGE_UP] = false;
+            if (!keys[GLFW_KEY_PAGE_DOWN]) keyPressed[GLFW_KEY_PAGE_DOWN] = false;
+            
+            for (const auto& organ : organInfo) {
+                if (keys[organ.key] && !keyPressed[organ.key]) {
+                    organs[organ.name].visible = !organs[organ.name].visible;
+                    std::cout << organ.name << " (" << organ.description << "): " 
+                              << (organs[organ.name].visible ? "Visible" : "Oculto") << std::endl;
+                    keyPressed[organ.key] = true;
+                }
+                if (!keys[organ.key]) {
+                    keyPressed[organ.key] = false;
+                }
+            }
             
             updateCamera();
         }
         
         void printInstructions() {
-            std::cout << "\n=== VISUALIZADOR DE ANATOMÍA DE RANA ===" << std::endl;
+            std::cout << "\n=== VISOR DE ANATOMÍA DE RANA ===" << std::endl;
             std::cout << "Controles:" << std::endl;
-            std::cout << "- Flechas: Rotar cámara" << std::endl;
-            std::cout << "- +/-: Zoom" << std::endl;
-            std::cout << "- Rueda del mouse: Zoom" << std::endl;
-            std::cout << "- A: Mostrar todos los órganos" << std::endl;
-            std::cout << "- C: Ocultar todos los órganos" << std::endl;
-            std::cout << "- ESC: Salir" << std::endl;
+            std::cout << "  Flechas: Rotar cámara" << std::endl;
+            std::cout << "  + / -: Zoom" << std::endl;
+            std::cout << "  A: Mostrar todos los órganos" << std::endl;
+            std::cout << "  C: Ocultar todos los órganos" << std::endl;
+            std::cout << "  F: Alternar modo wireframe" << std::endl;
+            std::cout << "  Page Up/Down: Ajustar velocidad de rotación" << std::endl;
+            std::cout << "  ESC: Salir" << std::endl;
             std::cout << "\nÓrganos disponibles:" << std::endl;
-            
             for (const auto& organ : organInfo) {
-                std::cout << "- " << organ.key << ": " << organ.name 
-                        << " (" << organ.description << ")" << std::endl;
+                std::cout << "  " << organ.key << ": " << organ.description << std::endl;
+            }
+            std::cout << "\nPresiona las teclas correspondientes para mostrar/ocultar órganos." << std::endl;
+            std::cout << "===============================\n" << std::endl;
+        }
+        
+        void run() {
+            while (!glfwWindowShouldClose(window)) {
+                processInput();
+                render();
+                glfwSwapBuffers(window);
+                glfwPollEvents();
             }
         }
-
+        
+        void cleanup() {
+            for (auto& pair : organs) {
+                Mesh& mesh = pair.second;
+                if (mesh.VAO != 0) {
+                    glDeleteVertexArrays(1, &mesh.VAO);
+                    glDeleteBuffers(1, &mesh.VBO);
+                    glDeleteBuffers(1, &mesh.EBO);
+                }
+            }
+            
+            if (shaderProgram != 0) {
+                glDeleteProgram(shaderProgram);
+            }
+            
+            if (window) {
+                glfwDestroyWindow(window);
+            }
+            glfwTerminate();
+        }
+        
         static void keyCallback(GLFWwindow* window, int key, int scancode, int action, int mods) {
             FrogAnatomyViewer* viewer = static_cast<FrogAnatomyViewer*>(glfwGetWindowUserPointer(window));
             if (key >= 0 && key < 1024) {
                 if (action == GLFW_PRESS) {
                     viewer->keys[key] = true;
-
-                    for (const auto& organ : viewer->organInfo) {
-                        if (key == organ.key && !viewer->keyPressed[key]) {
-                            viewer->organs[organ.name].visible = !viewer->organs[organ.name].visible;
-                            viewer->keyPressed[key] = true;
-                            break;
-                        }
-                    }
-
                 } else if (action == GLFW_RELEASE) {
                     viewer->keys[key] = false;
-                    viewer->keyPressed[key] = false;
                 }
             }
         }
-
+        
         static void scrollCallback(GLFWwindow* window, double xoffset, double yoffset) {
             FrogAnatomyViewer* viewer = static_cast<FrogAnatomyViewer*>(glfwGetWindowUserPointer(window));
-            viewer->cameraDistance -= static_cast<float>(yoffset) * 0.5f;
-            viewer->cameraDistance = glm::clamp(viewer->cameraDistance, 1.0f, 15.0f);
-        }
-
-        void cleanup() {
-            for (auto& [name, mesh] : organs) {
-                if (mesh.VAO) glDeleteVertexArrays(1, &mesh.VAO);
-                if (mesh.VBO) glDeleteBuffers(1, &mesh.VBO);
-                if (mesh.EBO) glDeleteBuffers(1, &mesh.EBO);
-            }
-            if (shaderProgram) glDeleteProgram(shaderProgram);
-            glfwDestroyWindow(window);
-            glfwTerminate();
-        }
-
-        void mainLoop() {
-            while (!glfwWindowShouldClose(window)) {
-                glfwPollEvents();
-                processInput();
-                render();
-                glfwSwapBuffers(window);
-            }
+            viewer->cameraDistance = std::max(1.0f, std::min(15.0f, viewer->cameraDistance - (float)yoffset * 0.5f));
         }
 };
 
 int main() {
     FrogAnatomyViewer viewer;
+    
     if (!viewer.initialize()) {
+        std::cerr << "Error al inicializar el visor" << std::endl;
         return -1;
     }
-
-    viewer.mainLoop();
+    
+    viewer.run();
+    
     return 0;
 }
