@@ -571,7 +571,7 @@ class FrogAnatomyViewer {
                 cameraAngleY += 2.0f * M_PI;
             }
             
-            if (keys[GLFW_KEY_EQUAL]) cameraDistance = std::max(1.0f, cameraDistance - 0.1f);
+            if (keys[GLFW_KEY_EQUAL]) cameraDistance = std::max(0.3f, cameraDistance - 0.1f);
             if (keys[GLFW_KEY_MINUS]) cameraDistance = std::min(15.0f, cameraDistance + 0.1f);
             
             if (keys[GLFW_KEY_PAGE_UP] && !keyPressed[GLFW_KEY_PAGE_UP]) {
